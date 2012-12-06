@@ -32,13 +32,16 @@ import com.handmark.pulltorefresh.library.PullToRefreshBase;
 import com.handmark.pulltorefresh.library.PullToRefreshBase.Mode;
 import com.handmark.pulltorefresh.library.PullToRefreshBase.OnLastItemVisibleListener;
 import com.handmark.pulltorefresh.library.PullToRefreshBase.OnRefreshListener;
+import com.handmark.pulltorefresh.library.PullToRefreshBase.State;
 import com.handmark.pulltorefresh.library.PullToRefreshListView;
+import com.handmark.pulltorefresh.library.extras.SoundPullEventListener;
 
 public final class PullToRefreshListActivity extends ListActivity {
 
 	static final int MENU_MANUAL_REFRESH = 0;
 	static final int MENU_DISABLE_SCROLL = 1;
 	static final int MENU_SET_MODE = 2;
+	static final int MENU_DEMO = 3;
 
 	private LinkedList<String> mListItems;
 	private PullToRefreshListView mPullRefreshListView;
@@ -48,7 +51,7 @@ public final class PullToRefreshListActivity extends ListActivity {
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
-		setContentView(R.layout.pull_to_refresh_list);
+		setContentView(R.layout.activity_ptr_list);
 
 		mPullRefreshListView = (PullToRefreshListView) findViewById(R.id.pull_refresh_list);
 
@@ -80,6 +83,15 @@ public final class PullToRefreshListActivity extends ListActivity {
 		mListItems.addAll(Arrays.asList(mStrings));
 
 		mAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, mListItems);
+
+		/**
+		 * Add Sound Event Listener
+		 */
+		SoundPullEventListener<ListView> soundListener = new SoundPullEventListener<ListView>(this);
+		soundListener.addSoundEvent(State.PULL_TO_REFRESH, R.raw.pull_event);
+		soundListener.addSoundEvent(State.RESET, R.raw.reset_sound);
+		soundListener.addSoundEvent(State.REFRESHING, R.raw.refreshing_sound);
+		mPullRefreshListView.setOnPullEventListener(soundListener);
 
 		// You can also just use setListAdapter(mAdapter) or
 		// mPullRefreshListView.setAdapter(mAdapter)
@@ -118,6 +130,7 @@ public final class PullToRefreshListActivity extends ListActivity {
 						: "Disable Scrolling while Refreshing");
 		menu.add(0, MENU_SET_MODE, 0, mPullRefreshListView.getMode() == Mode.BOTH ? "Change to MODE_PULL_DOWN"
 				: "Change to MODE_PULL_BOTH");
+		menu.add(0, MENU_DEMO, 0, "Demo");
 		return super.onCreateOptionsMenu(menu);
 	}
 
@@ -129,7 +142,7 @@ public final class PullToRefreshListActivity extends ListActivity {
 						: "Disable Scrolling while Refreshing");
 
 		MenuItem setModeItem = menu.findItem(MENU_SET_MODE);
-		setModeItem.setTitle(mPullRefreshListView.getMode() == Mode.BOTH ? "Change to MODE_PULL_DOWN"
+		setModeItem.setTitle(mPullRefreshListView.getMode() == Mode.BOTH ? "Change to MODE_FROM_START"
 				: "Change to MODE_PULL_BOTH");
 
 		return super.onPrepareOptionsMenu(menu);
@@ -148,8 +161,11 @@ public final class PullToRefreshListActivity extends ListActivity {
 						.isDisableScrollingWhileRefreshing());
 				break;
 			case MENU_SET_MODE:
-				mPullRefreshListView.setMode(mPullRefreshListView.getMode() == Mode.BOTH ? Mode.PULL_DOWN_TO_REFRESH
+				mPullRefreshListView.setMode(mPullRefreshListView.getMode() == Mode.BOTH ? Mode.PULL_FROM_START
 						: Mode.BOTH);
+				break;
+			case MENU_DEMO:
+				mPullRefreshListView.demo();
 				break;
 		}
 

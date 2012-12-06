@@ -1,3 +1,18 @@
+/*******************************************************************************
+ * Copyright 2011, 2012 Chris Banes.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *******************************************************************************/
 package com.handmark.pulltorefresh.library;
 
 import android.annotation.TargetApi;
@@ -7,7 +22,7 @@ import android.view.View;
 import com.handmark.pulltorefresh.library.PullToRefreshBase.Mode;
 
 @TargetApi(9)
-final class OverscrollHelper {
+public final class OverscrollHelper {
 
 	static final String LOG_TAG = "OverscrollHelper";
 	static final float DEFAULT_OVERSCROLL_SCALE = 1f;
@@ -22,6 +37,12 @@ final class OverscrollHelper {
 	 * 
 	 * @param view
 	 *            - PullToRefreshView that is calling this.
+	 * @param deltaX
+	 *            - Change in X in pixels, passed through from from overScrollBy
+	 *            call
+	 * @param scrollX
+	 *            - Current X scroll value in pixels before applying deltaY,
+	 *            passed through from from overScrollBy call
 	 * @param deltaY
 	 *            - Change in Y in pixels, passed through from from overScrollBy
 	 *            call
@@ -32,9 +53,9 @@ final class OverscrollHelper {
 	 *            - true if this scroll operation is the result of a touch
 	 *            event, passed through from from overScrollBy call
 	 */
-	static void overScrollBy(final PullToRefreshBase<?> view, final int deltaY, final int scrollY,
-			final boolean isTouchEvent) {
-		overScrollBy(view, deltaY, scrollY, 0, isTouchEvent);
+	public static void overScrollBy(final PullToRefreshBase<?> view, final int deltaX, final int scrollX, final int deltaY,
+			final int scrollY, final boolean isTouchEvent) {
+		overScrollBy(view, deltaX, scrollX, deltaY, scrollY, 0, isTouchEvent);
 	}
 
 	/**
@@ -44,6 +65,12 @@ final class OverscrollHelper {
 	 * 
 	 * @param view
 	 *            - PullToRefreshView that is calling this.
+	 * @param deltaX
+	 *            - Change in X in pixels, passed through from from overScrollBy
+	 *            call
+	 * @param scrollX
+	 *            - Current X scroll value in pixels before applying deltaY,
+	 *            passed through from from overScrollBy call
 	 * @param deltaY
 	 *            - Change in Y in pixels, passed through from from overScrollBy
 	 *            call
@@ -56,9 +83,9 @@ final class OverscrollHelper {
 	 *            - true if this scroll operation is the result of a touch
 	 *            event, passed through from from overScrollBy call
 	 */
-	static void overScrollBy(final PullToRefreshBase<?> view, final int deltaY, final int scrollY,
-			final int scrollRange, final boolean isTouchEvent) {
-		overScrollBy(view, deltaY, scrollY, scrollRange, 0, DEFAULT_OVERSCROLL_SCALE, isTouchEvent);
+	public static void overScrollBy(final PullToRefreshBase<?> view, final int deltaX, final int scrollX, final int deltaY,
+			final int scrollY, final int scrollRange, final boolean isTouchEvent) {
+		overScrollBy(view, deltaX, scrollX, deltaY, scrollY, scrollRange, 0, DEFAULT_OVERSCROLL_SCALE, isTouchEvent);
 	}
 
 	/**
@@ -67,6 +94,12 @@ final class OverscrollHelper {
 	 * 
 	 * @param view
 	 *            - PullToRefreshView that is calling this.
+	 * @param deltaX
+	 *            - Change in X in pixels, passed through from from overScrollBy
+	 *            call
+	 * @param scrollX
+	 *            - Current X scroll value in pixels before applying deltaY,
+	 *            passed through from from overScrollBy call
 	 * @param deltaY
 	 *            - Change in Y in pixels, passed through from from overScrollBy
 	 *            call
@@ -85,37 +118,54 @@ final class OverscrollHelper {
 	 *            - true if this scroll operation is the result of a touch
 	 *            event, passed through from from overScrollBy call
 	 */
-	static void overScrollBy(final PullToRefreshBase<?> view, final int deltaY, final int scrollY,
-			final int scrollRange, final int fuzzyThreshold, final float scaleFactor, final boolean isTouchEvent) {
+	public static void overScrollBy(final PullToRefreshBase<?> view, final int deltaX, final int scrollX, final int deltaY,
+			final int scrollY, final int scrollRange, final int fuzzyThreshold, final float scaleFactor,
+			final boolean isTouchEvent) {
+
+		final int deltaValue, currentScrollValue, scrollValue;
+		switch (view.getPullToRefreshScrollDirection()) {
+			case PullToRefreshBase.HORIZONTAL_SCROLL:
+				deltaValue = deltaX;
+				scrollValue = scrollX;
+				currentScrollValue = view.getScrollX();
+				break;
+			case PullToRefreshBase.VERTICAL_SCROLL:
+			default:
+				deltaValue = deltaY;
+				scrollValue = scrollY;
+				currentScrollValue = view.getScrollY();
+				break;
+		}
 
 		// Check that OverScroll is enabled
 		if (view.isPullToRefreshOverScrollEnabled()) {
 			final Mode mode = view.getMode();
 
-			// Check that we're not disabled, and the event isn't from touch
-			if (mode != Mode.DISABLED && !isTouchEvent) {
-				final int newY = (deltaY + scrollY);
+			// Check that Pull-to-Refresh is enabled, and the event isn't from
+			// touch
+			if (mode.permitsPullToRefresh() && !isTouchEvent && deltaValue != 0) {
+				final int newScrollValue = (deltaValue + scrollValue);
 
 				if (PullToRefreshBase.DEBUG) {
-					Log.d(LOG_TAG, "OverScroll. DeltaY: " + deltaY + ", ScrollY: " + scrollY + ", NewY: " + newY
-							+ ", ScrollRange: " + scrollRange);
+					Log.d(LOG_TAG, "OverScroll. DeltaX: " + deltaX + ", ScrollX: " + scrollX + ", DeltaY: " + deltaY
+							+ ", ScrollY: " + scrollY + ", NewY: " + newScrollValue + ", ScrollRange: " + scrollRange + ", CurrentScroll: " + currentScrollValue);
 				}
 
-				if (newY < (0 - fuzzyThreshold)) {
+				if (newScrollValue < (0 - fuzzyThreshold)) {
 					// Check the mode supports the overscroll direction, and
 					// then move scroll
-					if (mode.canPullDown()) {
-						view.setHeaderScroll((int) (scaleFactor * (view.getScrollY() + newY)));
+					if (mode.showHeaderLoadingLayout()) {
+						view.setHeaderScroll((int) (scaleFactor * (currentScrollValue + newScrollValue)));
 					}
-				} else if (newY > (scrollRange + fuzzyThreshold)) {
+				} else if (newScrollValue > (scrollRange + fuzzyThreshold)) {
 					// Check the mode supports the overscroll direction, and
 					// then move scroll
-					if (mode.canPullUp()) {
-						view.setHeaderScroll((int) (scaleFactor * (view.getScrollY() + newY - scrollRange)));
+					if (mode.showFooterLoadingLayout()) {
+						view.setHeaderScroll((int) (scaleFactor * (currentScrollValue + newScrollValue - scrollRange)));
 					}
-				} else if (Math.abs(newY) <= fuzzyThreshold || Math.abs(newY - scrollRange) <= fuzzyThreshold) {
+				} else if (Math.abs(newScrollValue) <= fuzzyThreshold || Math.abs(newScrollValue - scrollRange) <= fuzzyThreshold) {
 					// Means we've stopped overscrolling, so scroll back to 0
-					view.smoothScrollTo(0, PullToRefreshBase.SMOOTH_SCROLL_LONG_DURATION_MS);
+					view.smoothScrollToLonger(0);
 				}
 			}
 		}

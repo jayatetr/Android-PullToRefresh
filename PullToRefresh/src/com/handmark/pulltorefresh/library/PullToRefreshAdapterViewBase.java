@@ -38,8 +38,6 @@ import com.handmark.pulltorefresh.library.internal.IndicatorLayout;
 public abstract class PullToRefreshAdapterViewBase<T extends AbsListView> extends PullToRefreshBase<T> implements
 		OnScrollListener {
 
-	static final boolean DEFAULT_SHOW_INDICATOR = true;
-
 	private int mSavedLastVisibleIndex = -1;
 	private OnScrollListener mOnScrollListener;
 	private OnLastItemVisibleListener mOnLastItemVisibleListener;
@@ -72,8 +70,9 @@ public abstract class PullToRefreshAdapterViewBase<T extends AbsListView> extend
 	 * Gets whether an indicator graphic should be displayed when the View is in
 	 * a state where a Pull-to-Refresh can happen. An example of this state is
 	 * when the Adapter View is scrolled to the top and the mode is set to
-	 * {@link Mode#PULL_DOWN_TO_REFRESH}. The default value is
-	 * {@value #DEFAULT_SHOW_INDICATOR}.
+	 * {@link Mode#PULL_DOWN_TO_REFRESH}. The default value is <var>true</var>
+	 * if {@link PullToRefreshBase#isPullToRefreshOverScrollEnabled()
+	 * isPullToRefreshOverScrollEnabled()} returns false.
 	 * 
 	 * @return true if the indicators will be shown
 	 */
@@ -125,14 +124,6 @@ public abstract class PullToRefreshAdapterViewBase<T extends AbsListView> extend
 		}
 	}
 
-	@Override
-	protected void onScrollChanged(int l, int t, int oldl, int oldt) {
-		super.onScrollChanged(l, t, oldl, oldt);
-		if (null != mEmptyView && !mScrollEmptyView) {
-			mEmptyView.scrollTo(-l, -t);
-		}
-	}
-
 	/**
 	 * Pass-through method for {@link PullToRefreshBase#getRefreshableView()
 	 * getRefreshableView()}.{@link AdapterView#setAdapter(ListAdapter)
@@ -143,19 +134,6 @@ public abstract class PullToRefreshAdapterViewBase<T extends AbsListView> extend
 	 */
 	public void setAdapter(ListAdapter adapter) {
 		((AdapterView<ListAdapter>) mRefreshableView).setAdapter(adapter);
-	}
-
-	/**
-	 * Pass-through method for {@link PullToRefreshBase#getRefreshableView()
-	 * getRefreshableView()}.
-	 * {@link AdapterView#setOnItemClickListener(OnItemClickListener)
-	 * setOnItemClickListener(listener)}. This is just for convenience!
-	 * 
-	 * @param listener
-	 *            - OnItemClickListener to use
-	 */
-	public void setOnItemClickListener(OnItemClickListener listener) {
-		mRefreshableView.setOnItemClickListener(listener);
 	}
 
 	/**
@@ -202,8 +180,17 @@ public abstract class PullToRefreshAdapterViewBase<T extends AbsListView> extend
 		}
 	}
 
-	public final void setScrollEmptyView(boolean doScroll) {
-		mScrollEmptyView = doScroll;
+	/**
+	 * Pass-through method for {@link PullToRefreshBase#getRefreshableView()
+	 * getRefreshableView()}.
+	 * {@link AdapterView#setOnItemClickListener(OnItemClickListener)
+	 * setOnItemClickListener(listener)}. This is just for convenience!
+	 * 
+	 * @param listener
+	 *            - OnItemClickListener to use
+	 */
+	public void setOnItemClickListener(OnItemClickListener listener) {
+		mRefreshableView.setOnItemClickListener(listener);
 	}
 
 	public final void setOnLastItemVisibleListener(OnLastItemVisibleListener listener) {
@@ -212,7 +199,11 @@ public abstract class PullToRefreshAdapterViewBase<T extends AbsListView> extend
 
 	public final void setOnScrollListener(OnScrollListener listener) {
 		mOnScrollListener = listener;
-	};
+	}
+
+	public final void setScrollEmptyView(boolean doScroll) {
+		mScrollEmptyView = doScroll;
+	}
 
 	/**
 	 * Sets whether an indicator graphic should be displayed when the View is in
@@ -233,48 +224,42 @@ public abstract class PullToRefreshAdapterViewBase<T extends AbsListView> extend
 			// If not, then remove then
 			removeIndicatorViews();
 		}
-	}
+	};
 
 	@Override
-	protected void handleStyledAttributes(TypedArray a) {
-		// Set Show Indicator to the XML value, or default value
-		mShowIndicator = a.getBoolean(R.styleable.PullToRefresh_ptrShowIndicator, DEFAULT_SHOW_INDICATOR);
-	}
-
-	protected boolean isReadyForPullDown() {
-		return isFirstItemVisible();
-	}
-
-	protected boolean isReadyForPullUp() {
-		return isLastItemVisible();
-	}
-
-	@Override
-	protected void onPullToRefresh() {
+	void onPullToRefresh() {
 		super.onPullToRefresh();
 
 		if (getShowIndicatorInternal()) {
 			switch (getCurrentMode()) {
-				case PULL_UP_TO_REFRESH:
+				case PULL_FROM_END:
 					mIndicatorIvBottom.pullToRefresh();
 					break;
-				case PULL_DOWN_TO_REFRESH:
+				case PULL_FROM_START:
 					mIndicatorIvTop.pullToRefresh();
 					break;
 			}
 		}
 	}
 
+	void onRefreshing(boolean doScroll) {
+		super.onRefreshing(doScroll);
+
+		if (getShowIndicatorInternal()) {
+			updateIndicatorViewsVisibility();
+		}
+	}
+
 	@Override
-	protected void onReleaseToRefresh() {
+	void onReleaseToRefresh() {
 		super.onReleaseToRefresh();
 
 		if (getShowIndicatorInternal()) {
 			switch (getCurrentMode()) {
-				case PULL_UP_TO_REFRESH:
+				case PULL_FROM_END:
 					mIndicatorIvBottom.releaseToRefresh();
 					break;
-				case PULL_DOWN_TO_REFRESH:
+				case PULL_FROM_START:
 					mIndicatorIvTop.releaseToRefresh();
 					break;
 			}
@@ -282,19 +267,33 @@ public abstract class PullToRefreshAdapterViewBase<T extends AbsListView> extend
 	}
 
 	@Override
-	protected void resetHeader() {
-		super.resetHeader();
+	void onReset() {
+		super.onReset();
 
 		if (getShowIndicatorInternal()) {
 			updateIndicatorViewsVisibility();
 		}
 	}
 
-	protected void setRefreshingInternal(boolean doScroll) {
-		super.setRefreshingInternal(doScroll);
+	@Override
+	protected void handleStyledAttributes(TypedArray a) {
+		// Set Show Indicator to the XML value, or default value
+		mShowIndicator = a.getBoolean(R.styleable.PullToRefresh_ptrShowIndicator, !isPullToRefreshOverScrollEnabled());
+	}
 
-		if (getShowIndicatorInternal()) {
-			updateIndicatorViewsVisibility();
+	protected boolean isReadyForPullStart() {
+		return isFirstItemVisible();
+	}
+
+	protected boolean isReadyForPullEnd() {
+		return isLastItemVisible();
+	}
+
+	@Override
+	protected void onScrollChanged(int l, int t, int oldl, int oldt) {
+		super.onScrollChanged(l, t, oldl, oldt);
+		if (null != mEmptyView && !mScrollEmptyView) {
+			mEmptyView.scrollTo(-l, -t);
 		}
 	}
 
@@ -314,31 +313,31 @@ public abstract class PullToRefreshAdapterViewBase<T extends AbsListView> extend
 		Mode mode = getMode();
 		FrameLayout refreshableViewWrapper = getRefreshableViewWrapper();
 
-		if (mode.canPullDown() && null == mIndicatorIvTop) {
+		if (mode.showHeaderLoadingLayout() && null == mIndicatorIvTop) {
 			// If the mode can pull down, and we don't have one set already
-			mIndicatorIvTop = new IndicatorLayout(getContext(), Mode.PULL_DOWN_TO_REFRESH);
+			mIndicatorIvTop = new IndicatorLayout(getContext(), Mode.PULL_FROM_START);
 			FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
 					ViewGroup.LayoutParams.WRAP_CONTENT);
 			params.rightMargin = getResources().getDimensionPixelSize(R.dimen.indicator_right_padding);
 			params.gravity = Gravity.TOP | Gravity.RIGHT;
 			refreshableViewWrapper.addView(mIndicatorIvTop, params);
 
-		} else if (!mode.canPullDown() && null != mIndicatorIvTop) {
+		} else if (!mode.showHeaderLoadingLayout() && null != mIndicatorIvTop) {
 			// If we can't pull down, but have a View then remove it
 			refreshableViewWrapper.removeView(mIndicatorIvTop);
 			mIndicatorIvTop = null;
 		}
 
-		if (mode.canPullUp() && null == mIndicatorIvBottom) {
+		if (mode.showFooterLoadingLayout() && null == mIndicatorIvBottom) {
 			// If the mode can pull down, and we don't have one set already
-			mIndicatorIvBottom = new IndicatorLayout(getContext(), Mode.PULL_UP_TO_REFRESH);
+			mIndicatorIvBottom = new IndicatorLayout(getContext(), Mode.PULL_FROM_END);
 			FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
 					ViewGroup.LayoutParams.WRAP_CONTENT);
 			params.rightMargin = getResources().getDimensionPixelSize(R.dimen.indicator_right_padding);
 			params.gravity = Gravity.BOTTOM | Gravity.RIGHT;
 			refreshableViewWrapper.addView(mIndicatorIvBottom, params);
 
-		} else if (!mode.canPullUp() && null != mIndicatorIvBottom) {
+		} else if (!mode.showFooterLoadingLayout() && null != mIndicatorIvBottom) {
 			// If we can't pull down, but have a View then remove it
 			refreshableViewWrapper.removeView(mIndicatorIvBottom);
 			mIndicatorIvBottom = null;
@@ -428,7 +427,7 @@ public abstract class PullToRefreshAdapterViewBase<T extends AbsListView> extend
 
 	private void updateIndicatorViewsVisibility() {
 		if (null != mIndicatorIvTop) {
-			if (!isRefreshing() && isReadyForPullDown()) {
+			if (!isRefreshing() && isReadyForPullStart()) {
 				if (!mIndicatorIvTop.isVisible()) {
 					mIndicatorIvTop.show();
 				}
@@ -440,7 +439,7 @@ public abstract class PullToRefreshAdapterViewBase<T extends AbsListView> extend
 		}
 
 		if (null != mIndicatorIvBottom) {
-			if (!isRefreshing() && isReadyForPullUp()) {
+			if (!isRefreshing() && isReadyForPullEnd()) {
 				if (!mIndicatorIvBottom.isVisible()) {
 					mIndicatorIvBottom.show();
 				}

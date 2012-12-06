@@ -16,7 +16,6 @@
 package com.handmark.pulltorefresh.library.internal;
 
 import android.content.Context;
-import android.view.Gravity;
 import android.view.View;
 import android.view.animation.Animation;
 import android.view.animation.Animation.AnimationListener;
@@ -43,22 +42,20 @@ public class IndicatorLayout extends FrameLayout implements AnimationListener {
 		super(context);
 
 		mArrowImageView = new ImageView(context);
-		FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT,
-				FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.CENTER);
-		lp.topMargin = lp.bottomMargin = lp.leftMargin = lp.rightMargin = getResources().getDimensionPixelSize(
-				R.dimen.indicator_internal_padding);
-		addView(mArrowImageView, lp);
+		final int padding = getResources().getDimensionPixelSize(R.dimen.indicator_internal_padding);
+		mArrowImageView.setPadding(padding, padding, padding, padding);
+		addView(mArrowImageView);
 
 		int inAnimResId, outAnimResId;
 		switch (mode) {
-			case PULL_UP_TO_REFRESH:
+			case PULL_FROM_END:
 				inAnimResId = R.anim.slide_in_from_bottom;
 				outAnimResId = R.anim.slide_out_to_bottom;
 				setBackgroundResource(R.drawable.indicator_bg_bottom);
 				mArrowImageView.setImageResource(R.drawable.arrow_up);
 				break;
 			default:
-			case PULL_DOWN_TO_REFRESH:
+			case PULL_FROM_START:
 				inAnimResId = R.anim.slide_in_from_top;
 				outAnimResId = R.anim.slide_out_to_top;
 				setBackgroundResource(R.drawable.indicator_bg_top);

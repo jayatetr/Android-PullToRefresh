@@ -1,3 +1,18 @@
+/*******************************************************************************
+ * Copyright 2011, 2012 Chris Banes.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *******************************************************************************/
 package com.handmark.pulltorefresh.library;
 
 import android.graphics.drawable.Drawable;
@@ -5,10 +20,23 @@ import android.view.View;
 import android.view.animation.Interpolator;
 
 import com.handmark.pulltorefresh.library.PullToRefreshBase.Mode;
+import com.handmark.pulltorefresh.library.PullToRefreshBase.OnPullEventListener;
 import com.handmark.pulltorefresh.library.PullToRefreshBase.OnRefreshListener;
 import com.handmark.pulltorefresh.library.PullToRefreshBase.OnRefreshListener2;
+import com.handmark.pulltorefresh.library.PullToRefreshBase.State;
 
 public interface IPullToRefresh<T extends View> {
+
+	/**
+	 * Demos the Pull-to-Refresh functionality to the user so that they are
+	 * aware it is there. This could be useful when the user first opens your
+	 * app, etc. The animation will only happen if the Refresh View (ListView,
+	 * ScrollView, etc) is in a state where a Pull-to-Refresh could occur by a
+	 * user's touch gesture (i.e. scrolled to the top/bottom).
+	 * 
+	 * @return true - if the Demo has been started, false if not.
+	 */
+	public boolean demo();
 
 	/**
 	 * Get the mode that this view is currently in. This is only really useful
@@ -55,10 +83,9 @@ public interface IPullToRefresh<T extends View> {
 	public boolean getShowViewWhileRefreshing();
 
 	/**
-	 * @deprecated Use the value from <code>getCurrentMode()</code> instead
-	 * @return true if the current mode is Mode.PULL_DOWN_TO_REFRESH
+	 * @return - The state that the View is currently in.
 	 */
-	public boolean hasPullFromTop();
+	public State getState();
 
 	/**
 	 * Returns whether the widget has disabled scrolling on the Refreshable View
@@ -159,6 +186,15 @@ public interface IPullToRefresh<T extends View> {
 	public void setMode(Mode mode);
 
 	/**
+	 * Set OnPullEventListener for the Widget
+	 * 
+	 * @param listener
+	 *            - Listener to be used when the Widget has a pull event to
+	 *            propogate.
+	 */
+	public void setOnPullEventListener(OnPullEventListener<T> listener);
+
+	/**
 	 * Set OnRefreshListener for the Widget
 	 * 
 	 * @param listener
@@ -189,31 +225,26 @@ public interface IPullToRefresh<T extends View> {
 	 * <code>setPullLabel(releaseLabel, Mode.BOTH)</code>
 	 * 
 	 * @param releaseLabel
-	 *            - String to display
+	 *            - CharSequence to display
 	 */
-	public void setPullLabel(String pullLabel);
+	public void setPullLabel(CharSequence pullLabel);
 
 	/**
 	 * Set Text to show when the Widget is being Pulled
 	 * 
 	 * @param pullLabel
-	 *            - String to display
+	 *            - CharSequence to display
 	 * @param mode
 	 *            - Controls which Header/Footer Views will be updated.
 	 *            <code>Mode.BOTH</code> will update all available, other values
 	 *            will update the relevant View.
 	 */
-	public void setPullLabel(String pullLabel, Mode mode);
+	public void setPullLabel(CharSequence pullLabel, Mode mode);
 
 	/**
-	 * @deprecated This simple calls setMode with an appropriate mode based on
-	 *             the passed value.
-	 * 
-	 * @param enable
-	 *            Whether Pull-To-Refresh should be used
+	 * Sets the Widget to be in the refresh state. The UI will be updated to
+	 * show the 'Refreshing' view, and be scrolled to show such.
 	 */
-	public void setPullToRefreshEnabled(boolean enable);
-
 	public void setRefreshing();
 
 	/**
@@ -230,21 +261,21 @@ public interface IPullToRefresh<T extends View> {
 	 * <code>setRefreshingLabel(releaseLabel, Mode.BOTH)</code>
 	 * 
 	 * @param releaseLabel
-	 *            - String to display
+	 *            - CharSequence to display
 	 */
-	public void setRefreshingLabel(String refreshingLabel);
+	public void setRefreshingLabel(CharSequence refreshingLabel);
 
 	/**
 	 * Set Text to show when the Widget is refreshing
 	 * 
 	 * @param refreshingLabel
-	 *            - String to display
+	 *            - CharSequence to display
 	 * @param mode
 	 *            - Controls which Header/Footer Views will be updated.
 	 *            <code>Mode.BOTH</code> will update all available, other values
 	 *            will update the relevant View.
 	 */
-	public void setRefreshingLabel(String refreshingLabel, Mode mode);
+	public void setRefreshingLabel(CharSequence refreshingLabel, Mode mode);
 
 	/**
 	 * Set Text to show when the Widget is being pulled, and will refresh when
@@ -252,28 +283,29 @@ public interface IPullToRefresh<T extends View> {
 	 * <code>setReleaseLabel(releaseLabel, Mode.BOTH)</code>
 	 * 
 	 * @param releaseLabel
-	 *            - String to display
+	 *            - CharSequence to display
 	 */
-	public void setReleaseLabel(String releaseLabel);
+	public void setReleaseLabel(CharSequence releaseLabel);
 
 	/**
 	 * Set Text to show when the Widget is being pulled, and will refresh when
 	 * released
 	 * 
 	 * @param releaseLabel
-	 *            - String to display
+	 *            - CharSequence to display
 	 * @param mode
 	 *            - Controls which Header/Footer Views will be updated.
 	 *            <code>Mode.BOTH</code> will update all available, other values
 	 *            will update the relevant View.
 	 */
-	public void setReleaseLabel(String releaseLabel, Mode mode);
+	public void setReleaseLabel(CharSequence releaseLabel, Mode mode);
 
 	/**
 	 * Sets the Animation Interpolator that is used for animated scrolling.
 	 * Defaults to a DecelerateInterpolator
 	 * 
-	 * @param interpolator - Interpolator to use
+	 * @param interpolator
+	 *            - Interpolator to use
 	 */
 	public void setScrollAnimationInterpolator(Interpolator interpolator);
 
